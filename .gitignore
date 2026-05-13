@@ -1,0 +1,27 @@
+# IDE / editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node / build artefacts (au cas où)
+node_modules/
+dist/
+build/
+*.log
+
+# Local env / secrets — ne jamais commiter
+.env
+.env.local
+.env.*.local
+secrets.json
+credentials.json
+
+# clasp (Google Apps Script CLI)
+.clasp.json
+.clasprc.json

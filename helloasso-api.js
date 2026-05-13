@@ -1,0 +1,188 @@
+// =============================================================================
+// HelloAsso API client
+// Doc: https://api.helloasso.com/v5/swagger/index.html
+// =============================================================================
+
+const HELLOASSO_API_BASE = 'https://api.helloasso.com/v5';
+const HELLOASSO_TOKEN_URL = 'https://api.helloasso.com/oauth2/token';
+const HELLOASSO_TOKEN_CACHE_KEY = 'helloasso_access_token';
+const HELLOASSO_TOKEN_TTL_SAFETY = 60; // refresh 60s before expiry
+
+// -----------------------------------------------------------------------------
+// Credentials — stored in ScriptProperties, NEVER hardcoded
+// Setup once from the script editor:
+//   setHelloAssoCredentials('your_client_id', 'your_client_secret');
+// Then delete the call line.
+// -----------------------------------------------------------------------------
+
+let HELLOASSO_CREDENTIALS_CACHE_ = null;
+
+function setHelloAssoCredentials(clientId, clientSecret) {
+  PropertiesService.getScriptProperties().setProperties({
+    HELLOASSO_CLIENT_ID: clientId,
+    HELLOASSO_CLIENT_SECRET: clientSecret,
+  });
+  HELLOASSO_CREDENTIALS_CACHE_ = { clientId, clientSecret };
+}
+
+function getHelloAssoCredentials_() {
+  if (HELLOASSO_CREDENTIALS_CACHE_) return HELLOASSO_CREDENTIALS_CACHE_;
+  const props = PropertiesService.getScriptProperties();
+  const clientId = props.getProperty('HELLOASSO_CLIENT_ID');
+  const clientSecret = props.getProperty('HELLOASSO_CLIENT_SECRET');
+  if (!clientId || !clientSecret) {
+    throw new Error(
+      'HelloAsso credentials missing. Run setHelloAssoCredentials(id, secret) once.'
+    );
+  }
+  HELLOASSO_CREDENTIALS_CACHE_ = { clientId, clientSecret };
+  return HELLOASSO_CREDENTIALS_CACHE_;
+}
+
+// -----------------------------------------------------------------------------
+// Token (cached)
+// -----------------------------------------------------------------------------
+
+function getToken_() {
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get(HELLOASSO_TOKEN_CACHE_KEY);
+  if (cached) return 'Bearer ' + cached;
+
+  // Serialize concurrent refreshes — without this, parallel triggers each
+  // hit /oauth2/token and risk rate-limit + wasted handshakes.
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const fresh = cache.get(HELLOASSO_TOKEN_CACHE_KEY);
+    if (fresh) return 'Bearer ' + fresh;
+
+    const { clientId, clientSecret } = getHelloAssoCredentials_();
+    const res = UrlFetchApp.fetch(HELLOASSO_TOKEN_URL, {
+      method: 'post',
+      payload: {
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: 'client_credentials',
+      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      muteHttpExceptions: true,
+    });
+
+    const code = res.getResponseCode();
+    const body = res.getContentText();
+    if (code < 200 || code >= 300) {
+      throw new Error(`HelloAsso token request failed (${code}): ${body}`);
+    }
+
+    const data = JSON.parse(body);
+    const ttl = Math.max(60, (data.expires_in || 1800) - HELLOASSO_TOKEN_TTL_SAFETY);
+    cache.put(HELLOASSO_TOKEN_CACHE_KEY, data.access_token, Math.min(ttl, 21600));
+    return 'Bearer ' + data.access_token;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function invalidateToken_() {
+  CacheService.getScriptCache().remove(HELLOASSO_TOKEN_CACHE_KEY);
+}
+
+// -----------------------------------------------------------------------------
+// Generic API fetch — handles auth, retries (401 once, 429/5xx with backoff),
+// JSON parsing, error surfacing
+// -----------------------------------------------------------------------------
+
+const HELLOASSO_MAX_RETRIES = 3;
+const HELLOASSO_BACKOFF_BASE_MS = 500;
+
+function helloAssoFetch_(pathOrUrl, { method = 'get', query, payload, authRetry = true } = {}) {
+  const url = buildUrl_(pathOrUrl, query);
+
+  for (let attempt = 0; attempt <= HELLOASSO_MAX_RETRIES; attempt++) {
+    const options = {
+      method,
+      headers: { Authorization: getToken_(), 'cache-control': 'no-cache' },
+      muteHttpExceptions: true,
+    };
+    if (payload !== undefined) {
+      options.contentType = 'application/json';
+      options.payload = JSON.stringify(payload);
+    }
+
+    const res = UrlFetchApp.fetch(url, options);
+    const code = res.getResponseCode();
+    const body = res.getContentText();
+
+    if (code === 401 && authRetry) {
+      invalidateToken_();
+      return helloAssoFetch_(pathOrUrl, { method, query, payload, authRetry: false });
+    }
+
+    if ((code === 429 || code >= 500) && attempt < HELLOASSO_MAX_RETRIES) {
+      Utilities.sleep(HELLOASSO_BACKOFF_BASE_MS * Math.pow(2, attempt));
+      continue;
+    }
+
+    if (code < 200 || code >= 300) {
+      throw new Error(`HelloAsso ${method.toUpperCase()} ${url} → ${code}: ${body}`);
+    }
+
+    return body ? JSON.parse(body) : null;
+  }
+}
+
+function buildUrl_(pathOrUrl, query) {
+  const base = pathOrUrl.startsWith('http') ? pathOrUrl : HELLOASSO_API_BASE + pathOrUrl;
+  if (!query || Object.keys(query).length === 0) return base;
+  const qs = Object.entries(query)
+    .filter(([_, v]) => v !== undefined && v !== null)
+    .flatMap(([k, v]) => (Array.isArray(v) ? v.map(x => [k, x]) : [[k, v]]))
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join('&');
+  return qs ? `${base}${base.includes('?') ? '&' : '?'}${qs}` : base;
+}
+
+// -----------------------------------------------------------------------------
+// Pagination helper — HelloAsso uses pageIndex / pageSize, total in `pagination`
+// -----------------------------------------------------------------------------
+
+function helloAssoFetchAll_(path, query = {}, pageSize = 100) {
+  const out = [];
+  let pageIndex = 1;
+  while (true) {
+    const res = helloAssoFetch_(path, { query: { ...query, pageIndex, pageSize } });
+    const items = res.data || [];
+    out.push(...items);
+    const totalPages = res.pagination && res.pagination.totalPages;
+    if (totalPages ? pageIndex >= totalPages : items.length < pageSize) break;
+    pageIndex++;
+  }
+  return out;
+}
+
+// =============================================================================
+// URLEncode — exposed for spreadsheet use
+// =============================================================================
+
+function URLEncode(value) {
+  return encodeURIComponent(String(value));
+}
+
+// =============================================================================
+// IMPORTHELLOASSO — GET HelloAsso REST endpoint, flatten JSON to 2D for Sheets
+// JSON-flattening helpers live in json-to-2d.js.
+// =============================================================================
+
+/**
+ * GET a HelloAsso endpoint and return the JSON flattened to a 2D array.
+ *
+ * @param {string} url     Full HelloAsso URL or relative path (starting with /).
+ * @param {string} query   Comma-separated XPath-like prefixes to include.
+ * @param {string} options Comma-separated options: noInherit, noTruncate, rawHeaders, noHeaders, debugLocation.
+ * @return {Array<Array<*>>} 2D array, headers in row 0 unless noHeaders.
+ * @customfunction
+ */
+function IMPORTHELLOASSO(url, query, options) {
+  const object = helloAssoFetch_(url);
+  return parseJSONObject_(object, query, options, includeXPath_, defaultTransform_);
+}
