@@ -21,8 +21,7 @@ Relances mail
   └─ Cotisations
 Contacts
   ├─ Créer tous les manquants
-  ├─ Créer (ligne du curseur)
-  ├─ Mise à jour (ligne du curseur)
+  ├─ Créer / Mettre à jour (ligne du curseur)
   └─ Suppression (ligne du curseur)
 ```
 
