@@ -5,7 +5,7 @@
 
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
-  ui.createMenu(`ACTIONS Bureau ${SECTION_NAME}`)
+  ui.createMenu(`${ASSO_SHORT} ${SECTION_NAME}`)
     .addItem('Envoi des attestations CE', 'sendCertificates')
     .addSubMenu(ui.createMenu('Relances mail')
       .addItem('Certificats médicaux', 'sendMedCertificateMail')

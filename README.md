@@ -12,7 +12,7 @@ Automatise :
 
 ## Menu spreadsheet
 
-À l'ouverture, un menu **ACTIONS Bureau {SECTION_NAME}** est ajouté :
+À l'ouverture, un menu **{ASSO_SHORT} {SECTION_NAME}** est ajouté :
 
 ```
 Envoi des attestations CE
