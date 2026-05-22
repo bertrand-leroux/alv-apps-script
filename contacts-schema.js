@@ -2,6 +2,14 @@
 // Menu wrappers — these names are referenced by the spreadsheet menu.
 // -----------------------------------------------------------------------------
 
+// Label "ligne N (Prénom NOM)" pour identifier un contact dans les messages UI.
+// Lit les colonnes nom/prénom déclarées dans CONTACT_SCHEMA.name.
+function contactLabel_(line, data) {
+  const familyName = getByName(CONTACT_SCHEMA.name.familyName, line, data);
+  const givenName = getByName(CONTACT_SCHEMA.name.givenName, line, data);
+  return `ligne ${line} (${givenName} ${familyName})`;
+}
+
 function createAllUnexistingContacts() {
   const sheet = getSheet();
   const data = sheet.getDataRange().getValues();
@@ -38,23 +46,26 @@ function createOneContact() {
     return;
   }
 
+  const who = contactLabel_(line, data);
   const { created, errors } = syncContactCreate(sheet, line, CONTACT_SCHEMA);
   ui.alert(created === 1
-    ? `Contact ligne ${line} créé.`
-    : `Échec création ligne ${line}.\n${errors.join('\n')}`);
+    ? `Contact ${who} créé.`
+    : `Échec création ${who}.\n${errors.join('\n')}`);
 }
 
 function withCursorLine_(label, action) {
   const sheet = getSheet();
   const line = getCursorLine(sheet);
   if (line === null) return;
+  const data = sheet.getDataRange().getValues();
+  const who = contactLabel_(line, data);
   const ui = SpreadsheetApp.getUi();
   try {
     action(sheet, line);
-    ui.alert(`Contact ligne ${line} ${label}.`);
+    ui.alert(`Contact ${who} ${label}.`);
   } catch (e) {
-    Logger.log(`${label} fail line ${line}: ${e}`);
-    ui.alert(`Échec ${label} ligne ${line}: ${e.message}`);
+    Logger.log(`${label} fail ${who}: ${e}`);
+    ui.alert(`Échec ${label} ${who}: ${e.message}`);
   }
 }
 
