@@ -48,39 +48,34 @@ function getToken_() {
   const cached = cache.get(HELLOASSO_TOKEN_CACHE_KEY);
   if (cached) return 'Bearer ' + cached;
 
-  // Serialize concurrent refreshes — without this, parallel triggers each
-  // hit /oauth2/token and risk rate-limit + wasted handshakes.
-  const lock = LockService.getScriptLock();
-  lock.waitLock(10000);
-  try {
-    const fresh = cache.get(HELLOASSO_TOKEN_CACHE_KEY);
-    if (fresh) return 'Bearer ' + fresh;
+  // Pas de LockService ici : interdit en contexte custom function
+  // (=IMPORTHELLOASSO en cellule) — lève une exception qui casse l'appel.
+  // Race condition acceptée : si plusieurs appels parallèles ratent le cache
+  // simultanément, chacun POSTe /oauth2/token et le dernier write gagne dans
+  // le cache. Conséquence bénigne (quelques appels OAuth gaspillés, pas de
+  // corruption). Rate-limit HelloAsso assez généreux pour absorber.
+  const { clientId, clientSecret } = getHelloAssoCredentials_();
+  const res = UrlFetchApp.fetch(HELLOASSO_TOKEN_URL, {
+    method: 'post',
+    payload: {
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: 'client_credentials',
+    },
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    muteHttpExceptions: true,
+  });
 
-    const { clientId, clientSecret } = getHelloAssoCredentials_();
-    const res = UrlFetchApp.fetch(HELLOASSO_TOKEN_URL, {
-      method: 'post',
-      payload: {
-        client_id: clientId,
-        client_secret: clientSecret,
-        grant_type: 'client_credentials',
-      },
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      muteHttpExceptions: true,
-    });
-
-    const code = res.getResponseCode();
-    const body = res.getContentText();
-    if (code < 200 || code >= 300) {
-      throw new Error(`HelloAsso token request failed (${code}): ${body}`);
-    }
-
-    const data = JSON.parse(body);
-    const ttl = Math.max(60, (data.expires_in || 1800) - HELLOASSO_TOKEN_TTL_SAFETY);
-    cache.put(HELLOASSO_TOKEN_CACHE_KEY, data.access_token, Math.min(ttl, 21600));
-    return 'Bearer ' + data.access_token;
-  } finally {
-    lock.releaseLock();
+  const code = res.getResponseCode();
+  const body = res.getContentText();
+  if (code < 200 || code >= 300) {
+    throw new Error(`HelloAsso token request failed (${code}): ${body}`);
   }
+
+  const data = JSON.parse(body);
+  const ttl = Math.max(60, (data.expires_in || 1800) - HELLOASSO_TOKEN_TTL_SAFETY);
+  cache.put(HELLOASSO_TOKEN_CACHE_KEY, data.access_token, Math.min(ttl, 21600));
+  return 'Bearer ' + data.access_token;
 }
 
 function invalidateToken_() {
