@@ -164,20 +164,35 @@ function URLEncode(value) {
 }
 
 // =============================================================================
-// IMPORTHELLOASSO — GET HelloAsso REST endpoint, flatten JSON to 2D for Sheets
+// IMPORTHELLOASSO — GET HelloAsso REST endpoint, flatten JSON to 2D for Sheets.
+// Must be called from menu (not as @customfunction) because the auth chain
+// needs PropertiesService / CacheService / LockService — all blocked in the
+// custom-function sandbox.
 // JSON-flattening helpers live in json-to-2d.js.
 // =============================================================================
 
-/**
- * GET a HelloAsso endpoint and return the JSON flattened to a 2D array.
- *
- * @param {string} url     Full HelloAsso URL or relative path (starting with /).
- * @param {string} query   Comma-separated XPath-like prefixes to include.
- * @param {string} options Comma-separated options: noInherit, noTruncate, rawHeaders, noHeaders, debugLocation.
- * @return {Array<Array<*>>} 2D array, headers in row 0 unless noHeaders.
- * @customfunction
- */
-function IMPORTHELLOASSO(url, query, options) {
+function importHelloAsso_toSheet_(url, query, options) {
   const object = helloAssoFetch_(url);
-  return parseJSONObject_(object, query, options, includeXPath_, defaultTransform_);
+  const rows = parseJSONObject_(object, query, options, includeXPath_, defaultTransform_);
+  if (!rows || rows.length === 0) {
+    SpreadsheetApp.getUi().alert('No data returned.');
+    return;
+  }
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const cell = sheet.getActiveCell();
+  sheet.getRange(cell.getRow(), cell.getColumn(), rows.length, rows[0].length)
+    .setValues(rows);
+}
+
+function importHelloAsso() {
+  const ui = SpreadsheetApp.getUi();
+  const resp = ui.prompt(
+    'Import HelloAsso',
+    'Full URL or path (starting with /):',
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (resp.getSelectedButton() !== ui.Button.OK) return;
+  const url = resp.getResponseText().trim();
+  if (!url) return;
+  importHelloAsso_toSheet_(url);
 }
