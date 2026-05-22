@@ -204,15 +204,7 @@ function menuImportHelloAsso_toSheet_(url, query, options) {
 }
 
 function menuImportHelloAsso() {
-  const ui = SpreadsheetApp.getUi();
-  const resp = ui.prompt(
-    'Import HelloAsso',
-    'Full URL or path (starting with /):',
-    ui.ButtonSet.OK_CANCEL
-  );
-  if (resp.getSelectedButton() !== ui.Button.OK) return;
-  const url = resp.getResponseText().trim();
-  if (!url) return;
+  const url = `/organizations/${HELLOASSO_ASSO_SLUG}/forms/Membership/${HELLOASSO_CAMPAIGN_SLUG}/items?pageSize=100&pageIndex=1`;
   menuImportHelloAsso_toSheet_(url);
 }
 
