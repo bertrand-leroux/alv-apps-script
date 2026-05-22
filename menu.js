@@ -16,6 +16,6 @@ function onOpen() {
       .addItem('Mise à jour (ligne du curseur)', 'updateContact')
       .addItem('Suppression (ligne du curseur)', 'deleteContact'))
     .addSeparator()
-    .addItem('Import HelloAsso', 'importHelloAsso')
+    .addItem('Import HelloAsso', 'menuImportHelloAsso')
     .addToUi();
 }

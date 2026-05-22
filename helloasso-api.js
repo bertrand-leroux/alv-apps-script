@@ -169,7 +169,7 @@ function URLEncode(value) {
 //   1. =IMPORTHELLOASSO(url, query, options) directement dans une cellule
 //      (custom function — refresh auto par Sheets).
 //   2. Menu "Import HelloAsso" → prompt URL → écrit dans feuille active
-//      (importHelloAsso ci-dessous).
+//      (menuImportHelloAsso ci-dessous).
 // JSON-flattening helpers live in json-to-2d.js.
 //
 // Restrictions custom function : pas de LockService (cf. getToken_),
@@ -190,7 +190,7 @@ function IMPORTHELLOASSO(url, query, options) {
   return parseJSONObject_(object, query, options, includeXPath_, defaultTransform_);
 }
 
-function importHelloAsso_toSheet_(url, query, options) {
+function menuImportHelloAsso_toSheet_(url, query, options) {
   const object = helloAssoFetch_(url);
   const rows = parseJSONObject_(object, query, options, includeXPath_, defaultTransform_);
   if (!rows || rows.length === 0) {
@@ -203,7 +203,7 @@ function importHelloAsso_toSheet_(url, query, options) {
     .setValues(rows);
 }
 
-function importHelloAsso() {
+function menuImportHelloAsso() {
   const ui = SpreadsheetApp.getUi();
   const resp = ui.prompt(
     'Import HelloAsso',
@@ -213,7 +213,7 @@ function importHelloAsso() {
   if (resp.getSelectedButton() !== ui.Button.OK) return;
   const url = resp.getResponseText().trim();
   if (!url) return;
-  importHelloAsso_toSheet_(url);
+  menuImportHelloAsso_toSheet_(url);
 }
 
 // =============================================================================
@@ -232,13 +232,13 @@ function debugToken() {
 }
 
 function debugHelloAssoFetch() {
-  const path = '/organizations/<your-asso-slug>/orders';
+  const path = `/organizations/${HELLOASSO_ASSO_SLUG}/orders`;
   const json = helloAssoFetch_(path);
   Logger.log(JSON.stringify(json, null, 2));
 }
 
 function debugImportHelloAsso() {
-  const url = '/organizations/<your-asso-slug>/orders';
+  const url = `/organizations/${HELLOASSO_ASSO_SLUG}/orders`;
   const query = '/data/payer';
   const options = 'noTruncate';
 
