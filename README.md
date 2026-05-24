@@ -61,7 +61,10 @@ const MY_SCHEMA = {
   },
   memberships: {
     staticGroups: ['Mon Groupe'],
-    dynamicGroup: { col: 'Cours', allowedValues: ['Yoga lundi', 'Pilates mardi'] },
+    dynamicGroups: [
+      { col: 'Cours', allowedValues: ['Yoga lundi', 'Pilates mardi'] },
+      { col: 'Niveau', allowedValues: ['Débutant', 'Intermédiaire', 'Avancé'] },
+    ],
   },
 };
 

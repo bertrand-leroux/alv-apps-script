@@ -41,7 +41,7 @@ const COTISATION_MIN = 80;
 const COTISATION_MAX = 90;
 
 // Google Contact labels appliqués dynamiquement par contacts.js selon la valeur
-// d'une colonne (cf. CONTACT_SCHEMA.memberships.dynamicGroup). Permet de cibler
+// d'une colonne (cf. CONTACT_SCHEMA.memberships.dynamicGroups). Permet de cibler
 // des sous-groupes (cours, niveau, créneau, …) lors de la rédaction d'un mail.
 const CONTACT_LABELS = [
   'PILATES  - Mardi 10h - 15 personnes maximum',
@@ -88,7 +88,9 @@ const CONTACT_SCHEMA = {
   },
   memberships: {
     staticGroups: [YEAR_GROUP_NAME],
-    dynamicGroup: { col: 'Choix PILATES encore disponibles', allowedValues: CONTACT_LABELS },
+    dynamicGroups: [
+      { col: 'Choix PILATES encore disponibles', allowedValues: CONTACT_LABELS },
+    ],
   },
 };
 

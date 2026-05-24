@@ -9,7 +9,7 @@
 //   phones:     [ { col, label, required? }, ... ],
 //   birthday:   { col },
 //   address:    { defaults: {...}, mapping: { postalCode: 'col', city: 'col', ... } },
-//   memberships:{ staticGroups: ['Group A'], dynamicGroup: { col, allowedValues: [...] } },
+//   memberships:{ staticGroups: ['Group A'], dynamicGroups: [{ col, allowedValues: [...] }, ...] },
 //   trackingColumn: 'Google Contact'   // sheet column where contact URL is written/read
 // }
 // =============================================================================
@@ -29,8 +29,8 @@ function collectSchemaColumns_(schema) {
   if (schema.phones) cols.push(...schema.phones.map(s => s.col));
   if (schema.birthday) cols.push(schema.birthday.col);
   if (schema.address) cols.push(...Object.values(schema.address.mapping));
-  if (schema.memberships && schema.memberships.dynamicGroup) {
-    cols.push(schema.memberships.dynamicGroup.col);
+  if (schema.memberships && schema.memberships.dynamicGroups) {
+    cols.push(...schema.memberships.dynamicGroups.map(dg => dg.col));
   }
   return cols.filter(Boolean);
 }
@@ -61,7 +61,8 @@ function listAllContactGroups_() {
 function ensureContactGroups_(schema) {
   const spec = schema.memberships;
   if (!spec) return {};
-  const wanted = [...(spec.staticGroups || []), ...(spec.dynamicGroup ? spec.dynamicGroup.allowedValues : [])];
+  const dynamicAllowed = (spec.dynamicGroups || []).flatMap(dg => dg.allowedValues);
+  const wanted = [...(spec.staticGroups || []), ...dynamicAllowed];
   const existing = listAllContactGroups_();
   const byName = {};
   wanted.forEach(name => {
@@ -113,13 +114,16 @@ function buildContactMemberships_(spec, groups, line, data) {
   const out = (spec.staticGroups || []).map(name => ({
     contactGroupMembership: { contactGroupResourceName: groups[name].resourceName },
   }));
-  if (spec.dynamicGroup) {
-    const groupName = getByName(spec.dynamicGroup.col, line, data);
+  // Une cellule vide pour un dynamicGroup donné = pas d'appartenance ajoutée
+  // pour ce groupe (pas d'erreur). Permet d'avoir plusieurs colonnes facultatives.
+  (spec.dynamicGroups || []).forEach(dg => {
+    const groupName = getByName(dg.col, line, data);
+    if (!groupName) return;
     if (!groups[groupName]) {
-      throw new Error(`Groupe inconnu ligne ${line}: "${groupName}" (colonne "${spec.dynamicGroup.col}")`);
+      throw new Error(`Groupe inconnu ligne ${line}: "${groupName}" (colonne "${dg.col}")`);
     }
     out.push({ contactGroupMembership: { contactGroupResourceName: groups[groupName].resourceName } });
-  }
+  });
   return out;
 }
 
