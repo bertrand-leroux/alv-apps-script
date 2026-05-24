@@ -3,8 +3,10 @@
 // =============================================================================
 
 const GOOGLE_SHEET_ID = 'xxx';
+const INSCRIPTION_FORM_ID = '<GOOGLE_FORM_ID>';
 const SHEET_NAME = 'Demandes';
 const CONTACTS_SHEET_NAME = 'Google Contacts';
+const TRACKING_SHEET_ID = 'XXX';
 
 const YEAR_START = 2025;
 const YEAR_END = 2026;
@@ -31,8 +33,7 @@ Code postal VILLE`;
 const HELLOASSO_URL = `https://www.helloasso.com/associations/${HELLOASSO_ASSO_SLUG}/adhesions/${HELLOASSO_CAMPAIGN_SLUG}`;
 
 // IDs Google des ressources liées au tableur d'inscriptions de la section.
-const TRACKING_SHEET_URL = 'https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}';
-const INSCRIPTION_FORM_ID = '<GOOGLE_FORM_ID>';
+const TRACKING_SHEET_URL = `https://docs.google.com/spreadsheets/d/${TRACKING_SHEET_ID}`;
 
 const CERT_TEMPLATE_DOC = 'TEMPLATE Attestation CE';
 const CERT_FOLDER = `Attestations CE ${YEAR_START}`;
