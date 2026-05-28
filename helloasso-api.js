@@ -199,7 +199,7 @@ function IMPORTHELLOITEMS_SUMMARY() {
   const path = `/organizations/${HELLOASSO_ASSO_SLUG}/forms/Membership/${HELLOASSO_CAMPAIGN_SLUG}/items`;
   const items = helloAssoFetchAll_(path, { withDetails: true });
 
-  const header = ['Date', 'Email payeur', 'Montant (€)', "Nom de l'enfant", "Prénom de l'enfant", 'Prénom', 'Nom'];
+  const header = ['Date', 'Nom', 'Prénom', 'Email payeur', 'Montant (€)', "Nom de l'enfant", "Prénom de l'enfant"];
   const cf = (item, name) => {
     const f = (item.customFields || []).find(c => c.name === name);
     return f ? f.answer : '';
@@ -207,12 +207,12 @@ function IMPORTHELLOITEMS_SUMMARY() {
   const fmtDate = s => s ? s.slice(0, 10) + ' ' + s.slice(11, 19) : '';
   const rows = items.map(it => [
     fmtDate(it.order && it.order.date),
+    (it.user && it.user.lastName) || '',
+    (it.user && it.user.firstName) || '',
     (it.payer && it.payer.email) || '',
     (it.amount || 0) / 100,
     cf(it, "Nom de l'enfant"),
     cf(it, "Prénom de l'enfant"),
-    (it.user && it.user.firstName) || '',
-    (it.user && it.user.lastName) || '',
   ]);
   return [header, ...rows];
 }
