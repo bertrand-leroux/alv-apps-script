@@ -21,6 +21,8 @@ build/
 .env.*.local
 secrets.json
 credentials.json
+http-client.private.env.json
+**/http-client.private.env.json
 
 # clasp (Google Apps Script CLI)
 .clasp.json
