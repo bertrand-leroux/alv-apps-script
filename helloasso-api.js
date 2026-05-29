@@ -18,6 +18,9 @@ const HELLOASSO_TOKEN_TTL_SAFETY_MS = 60 * 1000; // refresh 60s before expiry
 // CacheService → réduit drastiquement les stampedes (Cloudflare 1015).
 // -----------------------------------------------------------------------------
 
+// Formule G Sheets pour matcher un paiement Helloasso
+// =IFNA(IFNA(INDEX(FILTER(Helloasso!B:B;MINUSCULE(SUPPRESPACE(Helloasso!C:C))=MINUSCULE(SUPPRESPACE($E2));MINUSCULE(SUPPRESPACE(Helloasso!F:F))=MINUSCULE(SUPPRESPACE($F2)));1);RECHERCHEV(MINUSCULE($B2);Helloasso!D:E;2;FAUX));"")
+
 function getToken_() {
   const props = PropertiesService.getScriptProperties();
   const raw = props.getProperty(HELLOASSO_TOKEN_PROP_KEY);
